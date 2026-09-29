@@ -1,0 +1,27 @@
+name: finance_app
+description: Aplicación móvil de finanzas personales con arquitectura limpia y pruebas unitarias.
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_bloc: ^8.1.6
+  provider: ^6.1.2
+  sqflite: ^2.4.1
+  http: ^1.2.2
+  equatable: ^2.0.7
+  get_it: ^8.0.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  mockito: ^5.4.4
+  build_runner: ^2.4.13
+  bloc_test: ^9.1.7
+
+flutter:
+  uses-material-design: true
