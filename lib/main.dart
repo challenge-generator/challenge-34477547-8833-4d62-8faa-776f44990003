@@ -3,6 +3,7 @@ import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
+import 'config/app_config.dart';
 import 'domain/repositories/transaction_repository.dart';
 import 'domain/repositories/account_repository.dart';
 import 'domain/usecases/calculate_balance_usecase.dart';
@@ -11,6 +12,7 @@ import 'data/repositories/transaction_repository_impl.dart';
 import 'data/repositories/account_repository_impl.dart';
 import 'data/datasources/local_transaction_datasource.dart';
 import 'data/datasources/remote_account_datasource.dart';
+import 'data/datasources/mock/mock_account_api_client.dart';
 import 'presentation/viewmodels/finance_viewmodel.dart';
 import 'presentation/screens/home_screen.dart';
 
@@ -22,7 +24,12 @@ void setupDependencies() {
     () => LocalTransactionDataSourceImpl(),
   );
   getIt.registerLazySingleton<RemoteAccountDataSource>(
-    () => RemoteAccountDataSourceImpl(httpClient: http.Client()),
+    () => RemoteAccountDataSourceImpl(
+      httpClient: AppConfig.useMocks
+          ? MockAccountApiClient(baseUrl: AppConfig.apiBaseUrl)
+          : http.Client(),
+      baseUrl: AppConfig.apiBaseUrl,
+    ),
   );
 
   // Repositories
