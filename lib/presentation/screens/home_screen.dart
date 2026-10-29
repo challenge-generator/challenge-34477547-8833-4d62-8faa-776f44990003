@@ -1,5 +1,3 @@
-package:finance_app/presentation/screens/home_screen.dart;
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:finance_app/presentation/viewmodels/finance_viewmodel.dart';
@@ -104,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: selectedCategory,
+                initialValue: selectedCategory,
                 decoration: InputDecoration(
                   labelText: 'Categoría',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -206,11 +204,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        BalanceCard(
-                          balance: viewModel.currentBalance,
-                          income: viewModel.totalIncome,
-                          expenses: viewModel.totalExpenses,
-                        ),
+                        if (viewModel.currentBalance != null)
+                          BalanceCard(balance: viewModel.currentBalance!)
+                        else
+                          const BalanceCardEmpty(),
                         const SizedBox(height: 24),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -254,9 +251,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   )
                 else
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    sliver: TransactionList(
+                  SliverFillRemaining(
+                    child: TransactionList(
                       transactions: viewModel.transactions,
                       onTransactionTap: (transaction) {
                         Navigator.push(

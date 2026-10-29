@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import '../entities/account.dart';
 import '../entities/balance.dart';
 import '../entities/transaction.dart';
 import '../repositories/account_repository.dart';
@@ -14,6 +13,9 @@ class CalculateBalanceUseCase extends Equatable {
     required this.transactionRepository,
   });
 
+  @override
+  List<Object?> get props => [accountRepository, transactionRepository];
+
   Future<Balance> execute(String accountId) async {
     final account = await accountRepository.getAccountById(accountId);
     if (account == null) {
@@ -21,7 +23,6 @@ class CalculateBalanceUseCase extends Equatable {
     }
 
     final transactions = await transactionRepository.getTransactionsByAccount(accountId);
-    final pendingTransactions = await transactionRepository.getPendingTransactions(accountId);
 
     double totalIncome = 0.0;
     double totalExpenses = 0.0;
@@ -38,10 +39,6 @@ class CalculateBalanceUseCase extends Equatable {
     }
 
     final currentBalance = account.initialBalance + totalIncome - totalExpenses;
-    final pendingAmount = pendingTransactions.fold<double>(
-      0.0,
-      (sum, tx) => sum + tx.calculateBalanceImpact(),
-    );
 
     final balance = Balance(
       id: 'balance_$accountId',
@@ -73,8 +70,7 @@ class CalculateBalanceUseCase extends Equatable {
 
     for (final transaction in futureTransactions) {
       final impact = transaction.calculateBalanceImpact();
-      if (transaction.type == TransactionType.income ||
-          (transaction.type == TransactionType.transfer && impact > 0)) {
+      if (transaction.type == TransactionType.income) {
         projectedIncome += impact;
       } else {
         projectedExpenses += impact.abs();

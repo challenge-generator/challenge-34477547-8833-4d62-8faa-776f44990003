@@ -1,5 +1,3 @@
-package:finance_app/presentation/screens.transaction_detail_screen.dart;
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:finance_app/domain/entities/transaction.dart';
@@ -186,7 +184,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -208,7 +206,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: typeColor.withOpacity(0.2),
+                      color: typeColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(

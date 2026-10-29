@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../domain/entities/account.dart';
 import '../../domain/entities/balance.dart';
-import '../../domain/entities/transaction.dart';
 
 class BalanceCard extends StatelessWidget {
   final Balance balance;
@@ -162,10 +162,8 @@ class BalanceCard extends StatelessWidget {
         return '€';
       case Currency.gbp:
         return '£';
-      case Currency.cop:
-        return '\$';
-      case Currency.mxn:
-        return '\$';
+      case Currency.jpy:
+        return '¥';
     }
   }
 

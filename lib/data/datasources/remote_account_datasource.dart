@@ -1,5 +1,3 @@
-package finance_app.data.datasources;
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:finance_app/data/models/account_model.dart';

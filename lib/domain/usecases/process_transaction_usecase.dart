@@ -1,7 +1,6 @@
-package finance_app.domain.usecases;
-
 import 'package:equatable/equatable.dart';
 import 'package:finance_app/domain/entities/transaction.dart';
+import 'package:finance_app/domain/entities/account.dart';
 import 'package:finance_app/domain/entities/balance.dart';
 import 'package:finance_app/domain/repositories/transaction_repository.dart';
 import 'package:finance_app/domain/repositories/account_repository.dart';
@@ -58,15 +57,7 @@ class ProcessTransactionUseCase {
     if (params.amount <= 0) {
       return ProcessTransactionResult(
         transaction: _createFailedTransaction(params),
-        updatedBalance: const Balance(
-          id: '',
-          accountId: '',
-          currentBalance: 0,
-          date: null,
-          income: 0,
-          expenses: 0,
-          currency: Currency.usd,
-        ),
+        updatedBalance: _emptyBalance(),
         success: false,
         errorMessage: 'El monto debe ser mayor a cero',
       );
@@ -76,21 +67,13 @@ class ProcessTransactionUseCase {
     if (account == null) {
       return ProcessTransactionResult(
         transaction: _createFailedTransaction(params),
-        updatedBalance: const Balance(
-          id: '',
-          accountId: '',
-          currentBalance: 0,
-          date: null,
-          income: 0,
-          expenses: 0,
-          currency: Currency.usd,
-        ),
+        updatedBalance: _emptyBalance(),
         success: false,
         errorMessage: 'Cuenta no encontrada',
       );
     }
 
-    final currentBalance = await _transactionRepository.getLatestBalance(params.accountId);
+    final currentBalance = await _accountRepository.getAccountBalance(params.accountId);
     final balanceToCheck = currentBalance ?? Balance(
       id: 'initial_${params.accountId}',
       accountId: params.accountId,
@@ -126,8 +109,8 @@ class ProcessTransactionUseCase {
     );
 
     try {
-      await _transactionRepository.saveTransaction(transaction);
-      await _transactionRepository.updateBalance(newBalance);
+      await _transactionRepository.createTransaction(transaction);
+      await _accountRepository.updateAccountBalance(params.accountId, newBalance);
 
       return ProcessTransactionResult(
         transaction: transaction,
@@ -142,6 +125,18 @@ class ProcessTransactionUseCase {
         errorMessage: 'Error al procesar la transacción: ${e.toString()}',
       );
     }
+  }
+
+  Balance _emptyBalance() {
+    return Balance(
+      id: '',
+      accountId: '',
+      currentBalance: 0,
+      date: DateTime.now(),
+      income: 0,
+      expenses: 0,
+      currency: Currency.usd,
+    );
   }
 
   Transaction _createFailedTransaction(ProcessTransactionParams params) {

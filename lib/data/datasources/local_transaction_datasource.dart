@@ -1,9 +1,6 @@
-package finance_app.data.datasources;
-
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as path_helper;
 import 'package:finance_app/data/models/transaction_model.dart';
-import 'package:finance_app/domain/entities/transaction.dart';
 
 abstract class LocalTransactionDataSource {
   Future<void> initialize();
@@ -233,17 +230,11 @@ class LocalTransactionDataSourceImpl implements LocalTransactionDataSource {
       id: map['id'] as String,
       accountId: map['account_id'] as String,
       amount: (map['amount'] as num).toDouble(),
-      description: map['description'] as String?,
+      description: (map['description'] as String?) ?? '',
       date: DateTime.fromMillisecondsSinceEpoch(map['date'] as int),
       category: map['category'] as String,
-      type: TransactionType.values.firstWhere(
-        (e) => e.name == map['type'],
-        orElse: () => TransactionType.expense,
-      ),
-      status: TransactionStatus.values.firstWhere(
-        (e) => e.name == map['status'],
-        orElse: () => TransactionStatus.pending,
-      ),
+      type: map['type'] as String,
+      status: map['status'] as String,
     );
   }
 
@@ -255,8 +246,8 @@ class LocalTransactionDataSourceImpl implements LocalTransactionDataSource {
       'description': model.description,
       'date': model.date.millisecondsSinceEpoch,
       'category': model.category,
-      'type': model.type.name,
-      'status': model.status.name,
+      'type': model.type,
+      'status': model.status,
       'created_at': DateTime.now().millisecondsSinceEpoch,
     };
   }

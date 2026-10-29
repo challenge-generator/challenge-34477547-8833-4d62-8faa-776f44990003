@@ -1,7 +1,4 @@
-package:finance_app/presentation.viewmodels;
-
 import 'package:flutter/foundation.dart';
-import 'package:provider/provider.dart';
 import 'package:finance_app/domain/entities/transaction.dart';
 import 'package:finance_app/domain/entities/account.dart';
 import 'package:finance_app/domain/entities/balance.dart';
@@ -15,6 +12,8 @@ class FinanceViewModel extends ChangeNotifier {
   final AccountRepository _accountRepository;
   final CalculateBalanceUseCase _calculateBalanceUseCase;
   final ProcessTransactionUseCase _processTransactionUseCase;
+
+  static const String _defaultUserId = 'default_user';
 
   List<Transaction> _transactions = [];
   Account? _currentAccount;
@@ -53,7 +52,7 @@ class FinanceViewModel extends ChangeNotifier {
     _clearError();
 
     try {
-      final accounts = await _accountRepository.getAccounts();
+      final accounts = await _accountRepository.getAccountsByUser(_defaultUserId);
       if (accounts.isNotEmpty) {
         _currentAccount = accounts.first;
         await _loadTransactions();
@@ -96,7 +95,7 @@ class FinanceViewModel extends ChangeNotifier {
     final defaultAccount = Account(
       id: 'default_account_${DateTime.now().millisecondsSinceEpoch}',
       name: 'Cuenta Principal',
-      userId: 'default_user',
+      userId: _defaultUserId,
       initialBalance: 0.0,
       currency: Currency.usd,
       type: AccountType.checking,
@@ -132,18 +131,20 @@ class FinanceViewModel extends ChangeNotifier {
     _clearError();
 
     try {
-      final transaction = Transaction(
-        id: 'txn_${DateTime.now().millisecondsSinceEpoch}',
-        accountId: _currentAccount!.id,
-        amount: amount,
-        description: description,
-        date: DateTime.now(),
-        category: category,
-        type: isIncome ? TransactionType.income : TransactionType.expense,
-        status: TransactionStatus.completed,
+      final result = await _processTransactionUseCase.execute(
+        ProcessTransactionParams(
+          accountId: _currentAccount!.id,
+          amount: amount,
+          description: description,
+          category: category,
+          type: isIncome ? TransactionType.income : TransactionType.expense,
+        ),
       );
+      if (!result.success) {
+        _setError(result.errorMessage ?? 'No se pudo procesar la transacción');
+        return false;
+      }
 
-      await _processTransactionUseCase.execute(transaction);
       await _loadTransactions();
       await _calculateBalance();
       return true;

@@ -1,5 +1,3 @@
-package finance_app.domain.usecases;
-
 import 'package:equatable/equatable.dart';
 import 'package:finance_app/domain/entities/transaction.dart';
 

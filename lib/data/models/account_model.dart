@@ -1,6 +1,5 @@
-package finance_app.data.models;
-
 import 'package:equatable/equatable.dart';
+import 'package:finance_app/domain/entities/account.dart';
 
 class AccountModel extends Equatable {
   final String id;
@@ -22,6 +21,38 @@ class AccountModel extends Equatable {
     required this.createdAt,
     this.updatedAt,
   });
+
+  factory AccountModel.fromEntity(Account account) {
+    return AccountModel(
+      id: account.id,
+      name: account.name,
+      userId: account.userId,
+      initialBalance: account.initialBalance,
+      currency: account.currency.name.toUpperCase(),
+      type: account.type.name,
+      createdAt: account.createdAt,
+      updatedAt: account.updatedAt,
+    );
+  }
+
+  Account toEntity() {
+    return Account(
+      id: id,
+      name: name,
+      userId: userId,
+      initialBalance: initialBalance,
+      currency: Currency.values.firstWhere(
+        (c) => c.name == currency.toLowerCase(),
+        orElse: () => Currency.usd,
+      ),
+      type: AccountType.values.firstWhere(
+        (t) => t.name == type,
+        orElse: () => AccountType.checking,
+      ),
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
 
   factory AccountModel.fromJson(Map<String, dynamic> json) {
     return AccountModel(

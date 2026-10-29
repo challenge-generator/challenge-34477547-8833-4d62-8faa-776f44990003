@@ -1,6 +1,5 @@
-package finance_app.data.models;
-
 import 'package:equatable/equatable.dart';
+import 'package:finance_app/domain/entities/transaction.dart';
 
 class TransactionModel extends Equatable {
   final String id;
@@ -75,25 +74,35 @@ class TransactionModel extends Equatable {
     );
   }
 
-  factory TransactionModel.fromEntity({
-    required String id,
-    required String accountId,
-    required double amount,
-    required String description,
-    required DateTime date,
-    required String category,
-    required String type,
-    required String status,
-  }) {
+  factory TransactionModel.fromEntity(Transaction transaction) {
     return TransactionModel(
+      id: transaction.id,
+      accountId: transaction.accountId,
+      amount: transaction.amount,
+      description: transaction.description,
+      date: transaction.date,
+      category: transaction.category,
+      type: transaction.type.name,
+      status: transaction.status.name,
+    );
+  }
+
+  Transaction toEntity() {
+    return Transaction(
       id: id,
       accountId: accountId,
       amount: amount,
       description: description,
       date: date,
       category: category,
-      type: type,
-      status: status,
+      type: TransactionType.values.firstWhere(
+        (t) => t.name == type,
+        orElse: () => TransactionType.expense,
+      ),
+      status: TransactionStatus.values.firstWhere(
+        (s) => s.name == status,
+        orElse: () => TransactionStatus.pending,
+      ),
     );
   }
 

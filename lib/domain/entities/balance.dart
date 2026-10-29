@@ -1,4 +1,6 @@
 import 'package:equatable/equatable.dart';
+import 'account.dart';
+import 'transaction.dart';
 
 /// Entidad que representa el balance financiero de una cuenta en un momento dado.
 /// Es inmutable y utiliza copyWith para crear nuevas instancias con valores modificados.

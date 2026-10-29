@@ -263,9 +263,9 @@ class _TransactionListItem extends StatelessWidget {
         color = Colors.red;
         label = 'Fallido';
         break;
-      case TransactionStatus.cancelled:
+      case TransactionStatus.reversed:
         color = Colors.grey;
-        label = 'Cancelado';
+        label = 'Revertido';
         break;
     }
 

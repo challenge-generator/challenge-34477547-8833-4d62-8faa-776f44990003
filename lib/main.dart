@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 import 'domain/repositories/transaction_repository.dart';
 import 'domain/repositories/account_repository.dart';
 import 'domain/usecases/calculate_balance_usecase.dart';
 import 'domain/usecases/process_transaction_usecase.dart';
-import 'domain/usecases/notify_transaction_usecase.dart';
 import 'data/repositories/transaction_repository_impl.dart';
 import 'data/repositories/account_repository_impl.dart';
 import 'data/datasources/local_transaction_datasource.dart';
@@ -23,7 +22,7 @@ void setupDependencies() {
     () => LocalTransactionDataSourceImpl(),
   );
   getIt.registerLazySingleton<RemoteAccountDataSource>(
-    () => RemoteAccountDataSourceImpl(),
+    () => RemoteAccountDataSourceImpl(httpClient: http.Client()),
   );
 
   // Repositories
@@ -31,26 +30,30 @@ void setupDependencies() {
     () => TransactionRepositoryImpl(getIt<LocalTransactionDataSource>()),
   );
   getIt.registerLazySingleton<AccountRepository>(
-    () => AccountRepositoryImpl(getIt<RemoteAccountDataSource>()),
+    () => AccountRepositoryImpl(remoteDataSource: getIt<RemoteAccountDataSource>()),
   );
 
   // Use cases
   getIt.registerLazySingleton<CalculateBalanceUseCase>(
-    () => CalculateBalanceUseCase(getIt<AccountRepository>()),
+    () => CalculateBalanceUseCase(
+      accountRepository: getIt<AccountRepository>(),
+      transactionRepository: getIt<TransactionRepository>(),
+    ),
   );
   getIt.registerLazySingleton<ProcessTransactionUseCase>(
-    () => ProcessTransactionUseCase(getIt<TransactionRepository>()),
-  );
-  getIt.registerLazySingleton<NotifyTransactionUseCase>(
-    () => NotifyTransactionUseCase(),
+    () => ProcessTransactionUseCase(
+      transactionRepository: getIt<TransactionRepository>(),
+      accountRepository: getIt<AccountRepository>(),
+    ),
   );
 
   // ViewModel
   getIt.registerFactory<FinanceViewModel>(
     () => FinanceViewModel(
+      transactionRepository: getIt<TransactionRepository>(),
+      accountRepository: getIt<AccountRepository>(),
       calculateBalanceUseCase: getIt<CalculateBalanceUseCase>(),
       processTransactionUseCase: getIt<ProcessTransactionUseCase>(),
-      notifyTransactionUseCase: getIt<NotifyTransactionUseCase>(),
     ),
   );
 }

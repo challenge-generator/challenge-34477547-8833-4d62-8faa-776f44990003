@@ -1,150 +1,183 @@
-package finance_app.data.repositories;
+import 'dart:async';
 
 import 'package:finance_app/data/datasources/remote_account_datasource.dart';
 import 'package:finance_app/domain/entities/account.dart';
+import 'package:finance_app/domain/entities/balance.dart';
 import 'package:finance_app/domain/repositories/account_repository.dart';
-import 'package:equatable/equatable.dart';
 
-class AccountRepositoryImpl implements AccountRepository {
+class AccountRepositoryImpl extends AccountRepository {
   final RemoteAccountDataSource _remoteDataSource;
-  final List<Account> _cache = [];
-  bool _isCacheValid = false;
+  final Map<String, Balance> _balances = {};
+  final StreamController<Account> _changes =
+      StreamController<Account>.broadcast();
 
   AccountRepositoryImpl({
     required RemoteAccountDataSource remoteDataSource,
   }) : _remoteDataSource = remoteDataSource;
 
   @override
-  Future<List<Account>> getAccounts() async {
-    if (_isCacheValid && _cache.isNotEmpty) {
-      return List.unmodifiable(_cache);
-    }
+  List<Object?> get props => [_remoteDataSource];
 
+  Future<T> _guard<T>(String action, Future<T> Function() body) async {
     try {
-      final accountModels = await _remoteDataSource.fetchAccounts();
-      _cache.clear();
-      _cache.addAll(accountModels);
-      _isCacheValid = true;
-      return List.unmodifiable(_cache);
+      return await body();
     } on DataSourceException catch (e) {
       throw RepositoryException(
-        message: 'Error al obtener cuentas: ${e.message}',
+        message: 'Error al $action: ${e.message}',
         originalError: e,
       );
     } on NetworkException catch (e) {
       throw RepositoryException(
-        message: 'Error de red al obtener cuentas: ${e.message}',
-        originalError: e,
-      );
-    }
-  }
-
-  @override
-  Future<Account?> getAccountById(String id) async {
-    final cached = _cache.where((a) => a.id == id).firstOrNull;
-    if (cached != null && _isCacheValid) {
-      return cached;
-    }
-
-    try {
-      final accountModel = await _remoteDataSource.fetchAccountById(id);
-      if (accountModel != null) {
-        final existingIndex = _cache.indexWhere((a) => a.id == id);
-        if (existingIndex >= 0) {
-          _cache[existingIndex] = accountModel;
-        } else {
-          _cache.add(accountModel);
-        }
-      }
-      return accountModel;
-    } on DataSourceException catch (e) {
-      throw RepositoryException(
-        message: 'Error al obtener cuenta por ID: ${e.message}',
-        originalError: e,
-      );
-    }
-  }
-
-  @override
-  Future<Account> createAccount(Account account) async {
-    try {
-      final createdAccount = await _remoteDataSource.createAccount(account);
-      _cache.add(createdAccount);
-      _invalidateCache();
-      return createdAccount;
-    } on DataSourceException catch (e) {
-      throw RepositoryException(
-        message: 'Error al crear cuenta: ${e.message}',
+        message: 'Error de red al $action: ${e.message}',
         originalError: e,
       );
     } on ValidationException catch (e) {
       throw RepositoryException(
-        message: 'Validación fallida al crear cuenta: ${e.message}',
-        originalError: e,
-      );
-    }
-  }
-
-  @override
-  Future<Account> updateAccount(Account account) async {
-    try {
-      final updatedAccount = await _remoteDataSource.updateAccount(account);
-      final index = _cache.indexWhere((a) => a.id == account.id);
-      if (index >= 0) {
-        _cache[index] = updatedAccount;
-      }
-      _invalidateCache();
-      return updatedAccount;
-    } on DataSourceException catch (e) {
-      throw RepositoryException(
-        message: 'Error al actualizar cuenta: ${e.message}',
+        message: 'Validación fallida al $action: ${e.message}',
         originalError: e,
       );
     } on NotFoundException catch (e) {
       throw RepositoryException(
-        message: 'Cuenta no encontrada para actualizar: ${e.message}',
+        message: 'Recurso no encontrado al $action: ${e.message}',
         originalError: e,
       );
     }
   }
 
   @override
-  Future<void> deleteAccount(String id) async {
-    try {
+  Future<List<Account>> getAccountsByUser(String userId) {
+    return _guard('obtener cuentas del usuario', () async {
+      final models = await _remoteDataSource.fetchAccountsByUserId(userId);
+      return models.map((m) => m.toEntity()).toList();
+    });
+  }
+
+  @override
+  Future<Account?> getAccountById(String id) {
+    return _guard('obtener la cuenta', () async {
+      final model = await _remoteDataSource.fetchAccountById(id);
+      return model?.toEntity();
+    });
+  }
+
+  @override
+  Future<Account> createAccount(Account account) {
+    return _guard('crear la cuenta', () async {
+      final model = await _remoteDataSource.createAccount(account);
+      final created = model.toEntity();
+      _changes.add(created);
+      return created;
+    });
+  }
+
+  @override
+  Future<Account> updateAccount(Account account) {
+    return _guard('actualizar la cuenta', () async {
+      final model = await _remoteDataSource.updateAccount(account);
+      final updated = model.toEntity();
+      _changes.add(updated);
+      return updated;
+    });
+  }
+
+  @override
+  Future<void> deleteAccount(String id) {
+    return _guard('eliminar la cuenta', () async {
       await _remoteDataSource.deleteAccount(id);
-      _cache.removeWhere((a) => a.id == id);
-      _invalidateCache();
-    } on DataSourceException catch (e) {
-      throw RepositoryException(
-        message: 'Error al eliminar cuenta: ${e.message}',
-        originalError: e,
-      );
-    } on NotFoundException catch (e) {
-      throw RepositoryException(
-        message: 'Cuenta no encontrada para eliminar: ${e.message}',
-        originalError: e,
-      );
-    }
+      _balances.remove(id);
+    });
   }
 
   @override
-  Future<List<Account>> getAccountsByUserId(String userId) async {
-    try {
-      final allAccounts = await getAccounts();
-      return allAccounts.where((a) => a.userId == userId).toList();
-    } catch (e) {
-      if (e is RepositoryException) rethrow;
-      throw RepositoryException(message: 'Error al filtrar cuentas por usuario');
-    }
+  Future<Balance?> getAccountBalance(String accountId) async {
+    return _balances[accountId];
   }
 
   @override
-  Future<void> invalidateCache() async {
-    _invalidateCache();
+  Future<Balance> updateAccountBalance(String accountId, Balance balance) async {
+    _balances[accountId] = balance;
+    return balance;
   }
 
-  void _invalidateCache() {
-    _isCacheValid = false;
+  @override
+  Future<List<Account>> getAccountsByType(String userId, AccountType type) async {
+    final accounts = await getAccountsByUser(userId);
+    return accounts.where((a) => a.type == type).toList();
+  }
+
+  @override
+  Future<bool> accountExists(String accountId) async {
+    return (await getAccountById(accountId)) != null;
+  }
+
+  @override
+  Future<double> getTotalBalanceByUser(String userId) async {
+    final accounts = await getAccountsByUser(userId);
+    return accounts.fold<double>(
+      0.0,
+      (sum, a) => sum + (_balances[a.id]?.currentBalance ?? a.initialBalance),
+    );
+  }
+
+  @override
+  Future<void> transferBetweenAccounts(
+    String fromAccountId,
+    String toAccountId,
+    double amount,
+  ) async {
+    final from = await getAccountById(fromAccountId);
+    final to = await getAccountById(toAccountId);
+    if (from == null || to == null) {
+      throw RepositoryException(message: 'Cuenta de origen o destino no encontrada');
+    }
+
+    final fromBalance = _balances[from.id] ?? _initialBalanceFor(from);
+    if (!fromBalance.canAfford(amount)) {
+      throw RepositoryException(message: 'Saldo insuficiente para la transferencia');
+    }
+    final toBalance = _balances[to.id] ?? _initialBalanceFor(to);
+
+    _balances[from.id] = fromBalance.copyWith(
+      currentBalance: fromBalance.currentBalance - amount,
+      expenses: fromBalance.expenses + amount,
+      date: DateTime.now(),
+    );
+    _balances[to.id] = toBalance.copyWith(
+      currentBalance: toBalance.currentBalance + amount,
+      income: toBalance.income + amount,
+      date: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<List<Account>> searchAccounts(String userId, String query) async {
+    final accounts = await getAccountsByUser(userId);
+    final lowered = query.toLowerCase();
+    return accounts.where((a) => a.name.toLowerCase().contains(lowered)).toList();
+  }
+
+  @override
+  Stream<Account> watchAccount(String accountId) {
+    return _changes.stream.where((a) => a.id == accountId);
+  }
+
+  @override
+  Stream<List<Account>> watchAccountsByUser(String userId) {
+    return _changes.stream
+        .where((a) => a.userId == userId)
+        .asyncMap((_) => getAccountsByUser(userId));
+  }
+
+  Balance _initialBalanceFor(Account account) {
+    return Balance(
+      id: 'initial_${account.id}',
+      accountId: account.id,
+      currentBalance: account.initialBalance,
+      date: DateTime.now(),
+      income: 0,
+      expenses: 0,
+      currency: account.currency,
+    );
   }
 }
 
@@ -159,44 +192,4 @@ class RepositoryException implements Exception {
 
   @override
   String toString() => 'RepositoryException: $message';
-}
-
-class DataSourceException implements Exception {
-  final String message;
-  final int? statusCode;
-
-  const DataSourceException({required this.message, this.statusCode});
-
-  @override
-  String toString() => 'DataSourceException: $message (status: $statusCode)';
-}
-
-class NetworkException implements Exception {
-  final String message;
-  final int? statusCode;
-
-  const NetworkException({required this.message, this.statusCode});
-
-  @override
-  String toString() => 'NetworkException: $message';
-}
-
-class ValidationException implements Exception {
-  final String message;
-  final Map<String, String>? fieldErrors;
-
-  const ValidationException({required this.message, this.fieldErrors});
-
-  @override
-  String toString() => 'ValidationException: $message';
-}
-
-class NotFoundException implements Exception {
-  final String message;
-  final String? resourceId;
-
-  const NotFoundException({required this.message, this.resourceId});
-
-  @override
-  String toString() => 'NotFoundException: $message';
 }
